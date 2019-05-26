@@ -237,3 +237,242 @@ class Person
 >>> someone.address = '1 High Street'
 >>> someone.phone = '555-1234'
 We create an empty class definition, then take advantage of the fact that Python will automatically create member variables when they are first assigned.
+
+
+
+Python Class Inheritance
+Python classes support inheritance, which lets us take a class definition and extend it. Let's create a new class that inherits (or derives) from the example in part 1:
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+class Foo:
+    def __init__(self, val):
+        self.val = val
+    def printVal(self):
+        print(self.val)
+ 
+class DerivedFoo(Foo):
+    def negateVal(self):
+        self.val = -self.val
+This defines a class called DerivedFoo that has everything the Foo class has, and also adds a new method called negateVal. Here it is in action:
+
+1
+2
+3
+4
+5
+6
+>>> obj = DerivedFoo(42)
+>>> obj.printVal()
+42
+>>> obj.negateVal()
+>>> obj.printVal()
+-42
+Inheritance becomes really useful when we re-define (or override) a method that is already defined in the base class:
+
+1
+2
+3
+class DerivedFoo2(Foo):
+    def printVal(self):
+        print('My value is %s' % self.val)
+We can test the class as follows:
+
+1
+2
+3
+>>> obj2 = DerivedFoo2(42)
+>>> obj2.printVal()
+My value is 42
+The derived class re-defines the printVal method to do something different, and it is this new version that will be used whenever printVal is called. This lets us change the behavior of the class, which is usually what we want (since if we wanted the original behavior, we would just use the original class). Note that the new version of this method calls the old version, and the call is prefixed with the name of the base class (otherwise Python would assume you're calling the new version).
+
+Python offers several functions to help you figure out what class an object is:
+
+isinstance checks if an object is an instance of the specified class, or a derived class.
+Such as the following:
+
+1
+2
+3
+4
+5
+6
+>>> print(isinstance(obj, Foo))
+True
+>>> print(isinstance(obj, DerivedFoo))
+True
+>>> print(isinstance(obj, DerivedFoo2))
+False
+issubclass checks if a class is derived from another class
+Such as the following:
+
+1
+2
+3
+4
+>>> print(issubclass(DerivedFoo, Foo))
+True
+>>> print(issubclass(int, Foo))
+False
+Python Class Iterators and Generators
+Python's for statement will loop over anything that is iterable, which includes built-in data types such as arrays and dictionaries. For example:
+
+1
+2
+3
+4
+5
+6
+>>> arr = [1,2,3]
+>>> for x in arr:
+...     print(x)
+1
+2
+3
+When we define our own classes, we can make them iterable, which will allow them to also work in a for loop. We do this by defining an __iter__ method, which returns an iterator (an object that keeps track of where we are in the loop), and a __next__ method that returns the next available value. Note that the syntax of the next method is different between Python 3.x and Python 2.x. For Python 3.x you must use the __next__ method, whereas for Python 2.x you must use the next method.
+
+Here's a simple example that lets you iterate backwards over a data structure. Here's the class definition:
+
+Python 3.x
+Python 2.x
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+class Backwards:
+    def __init__(self, val):
+        self.val = val
+        self.pos = len(val)
+ 
+    def __iter__(self):
+        return self
+ 
+    def __next__(self):
+        # We're done
+        if self.pos <= 0:
+            raise StopIteration
+ 
+        self.pos = self.pos - 1
+        return self.val[self.pos]
+And here's an example of iterating over the class:
+
+1
+2
+3
+4
+5
+>>> for x in Backwards([1,2,3]):
+...     print(x)
+3
+2
+1
+The class tracks two things, the data structure being iterated over, and the next value to be returned. The __iter__ method just returns a reference to the object itself, since this is what’s being used to manage the loop. When Python loops over the object, it repeatedly calls the next method to get the next value, until a StopIteration exception is thrown when there are no more left.
+
+This is a very simple example, but most of it is boiler-plate code (to get each item and track where we're up to in the loop) that will be the same every time we want to create an iterable class. However, Python comes to our rescue yet again and gives us a way to eliminate all of this repetitive administrative code, using generators.
+
+A generator is a special kind of function that returns an iterable object that auto-magically remembers where it's up to in a loop. Here's the same example, done this time using a generator.
+
+The function can be defined as follows (Note: using the yield keyword):
+
+1
+2
+3
+def backwards(val):
+    for n in range(len(val), 0, -1):
+        yield val[n-1]
+Here's how we can use the generator:
+
+1
+2
+3
+4
+5
+>>> for x in backwards([1,2,3]):
+...     print(x)
+3
+2
+1
+If you've never seen this kind of thing before, it can be really hard to get your head around it, but the easiest way to think of it is to read the backwards function like this:
+
+Loop backwards over the value passed in.
+On each pass, yield the next value i.e. temporarily stop executing the loop and return the next value to the caller. It does whatever it wants with it, then when it calls us again, we resume the loop from where we left off.
+Python Classes as Objects
+A class is a description of what instances of that class will look like i.e. what methods and member variables they will have. Internally, Python keeps track of each class definition in its own object, which we can modify. This means we can change the definition of a class on the fly, or even create a completely new class at run-time!
+
+Let's start with a simple class definition:
+
+1
+2
+3
+class Foo:
+    def __init__(self, val):
+        self.val = val
+Let's see the usage:
+
+1
+2
+3
+>>> obj = Foo(42)
+>>> obj.printVal()
+AttributeError: Foo instance has no attribute 'printVal'
+Oops! We got an error, because the class doesn't have a printVal method.
+
+OK, let's add one :-). We can define it as follows:
+
+1
+2
+def printVal(self):
+    print(self.val)
+And we can add the function to the class as follows:
+
+1
+2
+3
+>>> Foo.printVal = printVal
+>>> obj.printVal()
+42
+We defined a method called printVal that is stand-alone (i.e. it's defined outside of the class), but it looks like a class method (i.e. takes a self parameter). We then added it to the class definition (Foo.printVal = printVal), which then makes it available as if it had been part of the original class definition.
+
+If we want to remove it, we can do that using the normal del statement:
+
+1
+2
+3
+>>> del Foo.printVal
+>>> obj.printVal()
+AttributeError: Foo instance has no attribute 'printVal'
+To create a brand-new class at runtime, we use the type method:
+
+1
+2
+3
+4
+5
+6
+>>> obj = MyNewClass()
+NameError: name 'MyNewClass' is not defined
+>>> MyNewClass = type('MyNewClass', (object,), dict())
+>>> obj = MyNewClass()
+>>> print(obj)
+<__main__.MyNewClass object at 0x01D79DCC>
+The second parameter to the type call is a list of classes we want to derive from, while the third parameter is a dictionary of methods and member variables that will make up the class definition (you can define them here, or add them on-the-fly as described above).
+
+To understand generators and the yield keyword in Python, checkout the article Python Generators and the yield Keyword.
